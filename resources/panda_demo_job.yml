@@ -1,0 +1,87 @@
+resources:
+  jobs:
+    panda_demo_job:
+      name: "[${bundle.target}] Panda Restaurant Demo"
+      tasks:
+        - task_key: "00_setup_data_generation"
+          notebook_task:
+            notebook_path: ../src/notebooks/_resources/00_setup_data_generation.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+
+        - task_key: "01_data_management_quality"
+          depends_on:
+            - task_key: "00_setup_data_generation"
+          notebook_task:
+            notebook_path: ../src/notebooks/01_data_management_quality.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+
+        - task_key: "02_security_governance_compliance"
+          depends_on:
+            - task_key: "00_setup_data_generation"
+          notebook_task:
+            notebook_path: ../src/notebooks/02_security_governance_compliance.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+
+        - task_key: "03_performance_scalability"
+          depends_on:
+            - task_key: "00_setup_data_generation"
+          notebook_task:
+            notebook_path: ../src/notebooks/03_performance_scalability.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+
+        - task_key: "04_cost_model_finops"
+          depends_on:
+            - task_key: "00_setup_data_generation"
+          notebook_task:
+            notebook_path: ../src/notebooks/04_cost_model_finops.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+
+        - task_key: "05_development_ai_ml"
+          depends_on:
+            - task_key: "01_data_management_quality"
+          notebook_task:
+            notebook_path: ../src/notebooks/05_development_ai_ml.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+
+        - task_key: "06_dev_experience_ecosystem"
+          depends_on:
+            - task_key: "00_setup_data_generation"
+          notebook_task:
+            notebook_path: ../src/notebooks/06_dev_experience_ecosystem.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+
+        - task_key: "07_operations_reliability"
+          depends_on:
+            - task_key: "00_setup_data_generation"
+          notebook_task:
+            notebook_path: ../src/notebooks/07_operations_reliability.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+
+        - task_key: "08_bonus_dashboard_genie"
+          depends_on:
+            - task_key: "01_data_management_quality"
+          notebook_task:
+            notebook_path: ../src/notebooks/_resources/08_bonus_dashboard_genie.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+
+      permissions:
+        - level: CAN_VIEW
+          group_name: "users"

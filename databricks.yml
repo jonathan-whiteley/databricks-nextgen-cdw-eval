@@ -1,0 +1,41 @@
+bundle:
+  name: panda-datawarehouse-demo
+
+include:
+  - resources/*.yml
+
+sync:
+  exclude:
+    - docs/
+    - scratch/
+
+# ⚠️  UPDATE THESE before deploying to your own workspace:
+#   1. profile           — your Databricks CLI profile name (in both targets below)
+#   2. catalog / schema  — UC catalog name and schema name
+#   3. deployer_email    — your Databricks login email
+#   4. warehouse         — SQL warehouse name for warehouse_id lookup
+variables:
+  catalog:
+    default: "jdub_demo"
+    description: "Unity Catalog catalog name" # ⚠️ Change to your catalog name
+  schema:
+    default: "panda" # ⚠️ Change to your schema name
+  deployer_email:
+    default: "jonathan.whiteley@databricks.com" # ⚠️ Change to your email
+    description: "Your Databricks login email (used for prod root_path)"
+  warehouse_id:
+    lookup:
+      warehouse: "Serverless Starter Warehouse"  # ⚠️ Change to your warehouse name
+
+targets:
+  dev:
+    mode: development
+    workspace:
+      profile: DEFAULT  # ⚠️ Your Databricks CLI profile
+
+  prod:
+    default: true
+    mode: production
+    workspace:
+      profile: DEFAULT  # ⚠️ Your Databricks CLI profile
+      root_path: /Workspace/Users/${var.deployer_email}/.bundle/${bundle.name}/${bundle.target}

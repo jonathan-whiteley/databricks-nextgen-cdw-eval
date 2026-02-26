@@ -1,0 +1,15 @@
+# Dashboard resource is created programmatically by notebook 09_bonus_dashboard_genie.py
+# This file is a placeholder for future DAB-managed dashboard deployment.
+# Uncomment and populate after the first API-created dashboard is exported:
+#
+# resources:
+#   dashboards:
+#     panda_operations:
+#       display_name: "[${bundle.target}] Panda Restaurant Operations"
+#       file_path: ../src/dashboards/panda_operations.lvdash.json
+#       warehouse_id: ${var.warehouse_id}
+#       dataset_catalog: ${var.catalog}
+#       dataset_schema: ${var.schema}
+#       permissions:
+#         - level: CAN_RUN
+#           group_name: "users"

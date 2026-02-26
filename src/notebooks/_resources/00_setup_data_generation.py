@@ -1,7 +1,7 @@
 # Databricks notebook source
 
 # MAGIC %md
-# MAGIC # 🐼 Panda Restaurant Group — Setup & Data Generation
+# MAGIC # Panda Restaurant Group — Setup & Data Generation
 # MAGIC **Synapse to Databricks Evaluation**
 # MAGIC
 # MAGIC This notebook creates the catalog, schema, and synthetic data tables used across all demo notebooks.

@@ -189,8 +189,45 @@ fig.show()
 # MAGIC %md
 # MAGIC ---
 # MAGIC ## 🔌 Ecosystem & Integration
-# MAGIC ### 6.5 Azure Ecosystem Integration
-# MAGIC Databricks on Azure integrates natively with the Azure services Panda already uses.
+# MAGIC ### 6.5 Deep Azure Ecosystem Integration
+# MAGIC Databricks on Azure integrates natively with the Azure services Panda already uses — no bolt-on connectors or complex networking required.
+# MAGIC
+# MAGIC | Azure Service | Databricks Integration | Synapse Equivalent |
+# MAGIC |--------------|----------------------|-------------------|
+# MAGIC | **Entra ID (Azure AD)** | SCIM auto-sync of users & groups; SSO; conditional access policies | Partial — limited group sync, no SCIM |
+# MAGIC | **ADLS Gen2** | Unity Catalog external locations — governed access, no keys in code | Native but requires manual key/SAS management |
+# MAGIC | **Key Vault** | Secret scopes backed by Key Vault — `dbutils.secrets.get()` | Linked service — more configuration overhead |
+# MAGIC | **Azure ML** | Shared MLflow tracking; deploy models to either platform | Separate service, separate auth |
+# MAGIC | **Power BI** | Native DirectQuery + Import connector; one-click Partner Connect | Native but limited to dedicated SQL pool |
+# MAGIC | **Azure Data Factory** | Native linked service for notebooks, jobs, and pipelines | Native |
+# MAGIC | **Azure DevOps** | Git integration for notebooks + DABs CI/CD pipelines | Git integration for SQL scripts only |
+# MAGIC | **Private Link** | Full Private Link support for data plane + control plane | Private Link support |
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #### Entra ID Integration (Azure AD)
+# MAGIC
+# MAGIC Databricks supports **SCIM provisioning** from Entra ID, meaning users and groups are automatically synced to Unity Catalog. When you manage group membership in Entra ID, Databricks permissions update automatically — no manual user management.
+# MAGIC
+# MAGIC ```
+# MAGIC Entra ID (Azure AD)                    Databricks (Unity Catalog)
+# MAGIC ┌──────────────────┐    SCIM Sync     ┌─────────────────────────┐
+# MAGIC │  panda_analysts  │ ──────────────>  │  panda_analysts group   │
+# MAGIC │  panda_engineers │ ──────────────>  │  panda_engineers group  │
+# MAGIC │  panda_admins    │ ──────────────>  │  panda_admins group     │
+# MAGIC └──────────────────┘                  └─────────────────────────┘
+# MAGIC                                             │
+# MAGIC                                             ▼
+# MAGIC                                       GRANT SELECT ON TABLE
+# MAGIC                                       daily_sales TO `panda_analysts`
+# MAGIC ```
+# MAGIC
+# MAGIC - **SSO:** Users log in with their Microsoft credentials — same identity everywhere
+# MAGIC - **Conditional Access:** Enforce MFA, device compliance, and IP restrictions via Entra ID policies
+# MAGIC - **Service Principals:** Automate pipelines using Entra ID app registrations
+# MAGIC
+# MAGIC > 🆚 **Contrast with Synapse:** Synapse has Entra ID authentication but no SCIM auto-sync for groups. Permission management requires manual mapping between AD groups and database roles.
 
 # COMMAND ----------
 
@@ -212,7 +249,45 @@ fig.show()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 📂 6.6 Open Formats — No Vendor Lock-In
+# MAGIC #### Azure Key Vault Integration
+# MAGIC
+# MAGIC ```python
+# MAGIC # One-time setup: create a secret scope backed by Azure Key Vault
+# MAGIC # databricks secrets create-scope --scope panda-kv \
+# MAGIC #   --scope-backend-type AZURE_KEYVAULT \
+# MAGIC #   --resource-id /subscriptions/.../vaults/panda-keyvault \
+# MAGIC #   --dns-name https://panda-keyvault.vault.azure.net/
+# MAGIC
+# MAGIC # In notebooks — no plaintext credentials, ever
+# MAGIC # api_key = dbutils.secrets.get(scope="panda-kv", key="informatica-api-key")
+# MAGIC # jdbc_password = dbutils.secrets.get(scope="panda-kv", key="sql-server-password")
+# MAGIC ```
+# MAGIC
+# MAGIC Secrets are **redacted from notebook output** automatically — if someone prints a secret, Databricks replaces it with `[REDACTED]`.
+
+# COMMAND ----------
+
+# MAGIC %md-sandbox
+# MAGIC ### 📊 6.6 Power BI & Third-Party BI Tools
+# MAGIC
+# MAGIC <iframe style="float: right" width="560" height="315" src="https://www.youtube.com/embed/EcKqQV0rCnQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+# MAGIC
+# MAGIC SQL warehouses can be used with external BI tools such as **Power BI** or **Tableau**.
+# MAGIC
+# MAGIC This allows you to run direct queries on top of your tables, with a **unified security model** through Unity Catalog (including SSO via Entra ID). Analysts can use their favorite tools to discover insights on the most complete and freshest data.
+# MAGIC
+# MAGIC **Power BI integration highlights:**
+# MAGIC - **DirectQuery mode** — live queries against SQL warehouse, always fresh data
+# MAGIC - **Import mode** — scheduled refreshes for high-performance dashboards
+# MAGIC - **SSO passthrough** — Power BI users authenticate with Entra ID, Unity Catalog enforces row-level and column-level security
+# MAGIC - **One-click setup** — connect via [Partner Connect](/partnerconnect) or use the native Databricks connector in Power BI Desktop
+# MAGIC
+# MAGIC > 🆚 **Contrast with Synapse:** Power BI connects to Synapse dedicated pools but loses features like row-level security passthrough and dynamic column masking. With Databricks, Unity Catalog security policies follow the data into Power BI.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 📂 6.7 Open Formats — No Vendor Lock-In
 # MAGIC All data in Databricks is stored as **Delta Lake (Parquet + transaction log)**. Any tool that reads Parquet can read your data.
 
 # COMMAND ----------
@@ -227,7 +302,48 @@ print(f"No proprietary format. No vendor lock-in.")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ### 🔗 6.7 Partner Connect & Connectors
+# MAGIC ### 🔄 6.8 Lakeflow Connect — Ingest from SQL Server & Databases
+# MAGIC
+# MAGIC **Lakeflow Connect** provides managed, low-code connectors that continuously ingest data from operational databases (SQL Server, PostgreSQL, MySQL, Oracle) into Delta Lake — with CDC (Change Data Capture) built in.
+# MAGIC
+# MAGIC ```
+# MAGIC ┌─────────────────────┐                    ┌─────────────────────────┐
+# MAGIC │  SQL Server (POS)   │                    │  Unity Catalog          │
+# MAGIC │  ┌───────────────┐  │   Lakeflow         │  ┌──────────────────┐  │
+# MAGIC │  │ dbo.orders    │──│── Connect ─────────│──│ bronze.orders    │  │
+# MAGIC │  │ dbo.inventory │──│── (CDC)    ─────────│──│ bronze.inventory │  │
+# MAGIC │  │ dbo.employees │──│──          ─────────│──│ bronze.employees │  │
+# MAGIC │  └───────────────┘  │                    │  └──────────────────┘  │
+# MAGIC └─────────────────────┘                    └─────────────────────────┘
+# MAGIC ```
+# MAGIC
+# MAGIC | Feature | Synapse (ADF/Pipelines) | Lakeflow Connect |
+# MAGIC |---------|----------------------|-----------------|
+# MAGIC | Setup complexity | Multiple linked services, datasets, pipeline activities | Point-and-click or SQL DDL |
+# MAGIC | Change Data Capture | Manual CDC configuration | Built-in, automatic |
+# MAGIC | Schema evolution | Manual intervention | Automatic column adds |
+# MAGIC | Monitoring | ADF Monitor + Log Analytics | System tables + built-in UI |
+# MAGIC | Maintenance | Pipeline debugging, retry logic | Fully managed, auto-retry |
+# MAGIC
+# MAGIC ```sql
+# MAGIC -- Example: Create a Lakeflow Connect ingestion pipeline (SQL DDL syntax)
+# MAGIC -- CREATE CONNECTION panda_sqlserver
+# MAGIC --   TYPE SQLSERVER
+# MAGIC --   OPTIONS (host 'panda-pos-db.database.windows.net', port '1433');
+# MAGIC --
+# MAGIC -- CREATE STREAMING TABLE bronze.orders
+# MAGIC --   AS INGEST FROM panda_sqlserver.dbo.orders;
+# MAGIC --
+# MAGIC -- CREATE STREAMING TABLE bronze.inventory
+# MAGIC --   AS INGEST FROM panda_sqlserver.dbo.inventory;
+# MAGIC ```
+# MAGIC
+# MAGIC > 🔑 **Migration path:** Panda's existing SQL Server databases (POS, inventory, HR) can be continuously replicated into Databricks using Lakeflow Connect — replacing complex ADF pipelines with a managed, declarative approach.
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### 🔗 6.9 Partner Connect & Connectors
 # MAGIC
 # MAGIC | Integration | Connection Method | Notes |
 # MAGIC |------------|------------------|-------|
@@ -242,7 +358,7 @@ print(f"No proprietary format. No vendor lock-in.")
 # MAGIC
 # MAGIC > **Navigate to:** Open [Partner Connect](/partnerconnect) to see one-click integrations with 50+ tools.
 # MAGIC
-# MAGIC ### 🌐 6.8 Multi-Cloud — Same Platform Everywhere
+# MAGIC ### 🌐 6.10 Multi-Cloud — Same Platform Everywhere
 # MAGIC
 # MAGIC | | Synapse | Databricks |
 # MAGIC |---|--------|------------|
@@ -257,7 +373,7 @@ print(f"No proprietary format. No vendor lock-in.")
 
 # MAGIC %md
 # MAGIC ---
-# MAGIC ### ✅ 6.9 Full Summary: Synapse Pain Points to Databricks Solutions
+# MAGIC ### ✅ 6.11 Full Summary: Synapse Pain Points to Databricks Solutions
 # MAGIC
 # MAGIC | Pain Point | Synapse Challenge | Databricks Solution |
 # MAGIC |-----------|------------------|-------------------|
@@ -277,6 +393,8 @@ print(f"No proprietary format. No vendor lock-in.")
 # MAGIC | **ML integration** | Separate Azure ML | Built-in MLflow + Model Serving |
 # MAGIC | **AI from SQL** | Not available | `ai_query()` — call LLMs directly from SQL |
 # MAGIC | **Vendor connectors** | Limited | Partner Connect — 50+ one-click integrations |
+# MAGIC | **Database ingestion** | ADF pipelines + manual CDC | Lakeflow Connect — managed CDC from SQL Server |
+# MAGIC | **Power BI security** | Limited passthrough | Full Unity Catalog security via SSO |
 # MAGIC | **Multi-cloud** | Azure only | Azure + AWS + GCP |
 # MAGIC | **DevOps overhead** | Multiple pools, pipelines, networking | Serverless + Asset Bundles + single admin |
 # MAGIC | **Environment management** | ARM templates + complex CI/CD | Databricks Asset Bundles (YAML) |
